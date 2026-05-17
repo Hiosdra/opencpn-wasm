@@ -533,12 +533,12 @@ class ChartRenderer {
 
         // Register with App.charts if available
         if (typeof App !== 'undefined' && App.charts) {
-            App.charts.add(kap, { id: layerId, type: 'kap', name: kap.name, scale: kap.scale, extent: ext });
+            App.charts.add(kap, { id: layerId, type: 'kap', name: kap.name, scale: kap.scale, extent: kap.extent });
         }
 
         // Merge extent
         if (!this.chartData) this.chartData = {};
-        this._expandExtent(ext);
+        this._expandExtent(kap.extent);
 
         document.getElementById('info-panel').style.display = 'block';
         document.getElementById('info-scale').textContent = `1:${kap.scale || '?'}`;
