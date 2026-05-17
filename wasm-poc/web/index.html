@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#16213e">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>OpenCPN WASM — Chart Viewer</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: #1a1a2e; color: #e0e0e0;
+    display: flex; flex-direction: column; height: 100vh;
+    overflow: hidden;
+}
+header {
+    background: #16213e; padding: 8px 16px;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    border-bottom: 1px solid #0f3460; z-index: 20;
+}
+header h1 { font-size: 16px; color: #53a8b6; white-space: nowrap; }
+#status { font-size: 12px; color: #888; flex: 1; text-align: right; min-width: 100px; }
+.btn {
+    background: #0f3460; color: #53a8b6; border: 1px solid #53a8b6;
+    padding: 5px 12px; border-radius: 4px; cursor: pointer;
+    font-size: 12px; transition: all 0.15s; white-space: nowrap;
+}
+.btn:hover { background: #53a8b6; color: #1a1a2e; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-sm { padding: 5px 8px; font-size: 14px; min-width: 30px; }
+#canvas-container {
+    flex: 1; position: relative; overflow: hidden;
+    background: rgb(209,227,242);
+}
+canvas { width: 100%; height: 100%; display: block; }
+
+/* Info panel */
+#info-panel {
+    position: absolute; bottom: 16px; left: 16px;
+    background: rgba(22,33,62,0.92); padding: 10px 14px;
+    border-radius: 6px; font-size: 11px;
+    border: 1px solid rgba(83,168,182,0.3); z-index: 10;
+    min-width: 180px; line-height: 1.6;
+    pointer-events: none; user-select: none;
+}
+#info-panel .label { color: #53a8b6; font-weight: 500; }
+
+/* Scale bar */
+#scale-bar-container {
+    position: absolute; bottom: 16px; right: 16px;
+    z-index: 10; pointer-events: none; user-select: none;
+    display: flex; flex-direction: column; align-items: flex-end;
+}
+#scale-bar {
+    height: 3px; background: rgba(255,255,255,0.85);
+    border: 1px solid rgba(0,0,0,0.4); border-top: none;
+    min-width: 30px; transition: width 0.15s;
+    box-shadow: 0 0 4px rgba(0,0,0,0.3);
+}
+#scale-bar::before, #scale-bar::after {
+    content: ''; position: absolute; bottom: 0;
+    width: 1px; height: 8px; background: rgba(255,255,255,0.85);
+    box-shadow: 0 0 2px rgba(0,0,0,0.4);
+}
+#scale-bar::before { left: 0; }
+#scale-bar::after { right: 0; }
+#scale-label {
+    font-size: 10px; color: rgba(255,255,255,0.9);
+    text-shadow: 0 0 3px rgba(0,0,0,0.8), 0 0 6px rgba(0,0,0,0.5);
+    margin-bottom: 2px; font-weight: 600;
+}
+
+/* Drag-and-drop overlay */
+#drop-overlay {
+    display: none; position: absolute; inset: 0; z-index: 100;
+    background: rgba(15,52,96,0.85);
+    border: 3px dashed #53a8b6;
+    justify-content: center; align-items: center;
+    font-size: 24px; color: #53a8b6; font-weight: 600;
+    pointer-events: none;
+}
+#drop-overlay.active { display: flex; }
+
+/* Keyboard hints tooltip */
+#kbd-hints {
+    position: absolute; top: 60px; right: 16px;
+    background: rgba(22,33,62,0.92); padding: 10px 14px;
+    border-radius: 6px; font-size: 10px; line-height: 1.8;
+    border: 1px solid rgba(83,168,182,0.3); z-index: 15;
+    display: none; color: #aaa;
+}
+#kbd-hints kbd {
+    background: #0f3460; padding: 1px 5px; border-radius: 3px;
+    font-family: monospace; font-size: 10px; color: #53a8b6;
+    border: 1px solid #53a8b6;
+}
+
+/* Context menu */
+#context-menu {
+    display: none; position: absolute; z-index: 50;
+    background: rgba(22,33,62,0.95); border: 1px solid #53a8b6;
+    border-radius: 6px; padding: 4px 0; min-width: 180px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+#context-menu .ctx-item {
+    padding: 6px 16px; cursor: pointer; font-size: 12px;
+    color: #e0e0e0; white-space: nowrap;
+}
+#context-menu .ctx-item:hover { background: rgba(83,168,182,0.2); }
+#context-menu .ctx-sep { height: 1px; background: rgba(83,168,182,0.2); margin: 3px 0; }
+
+/* Measure overlay */
+#measure-info {
+    display: none; position: absolute; top: 60px; right: 16px;
+    background: rgba(22,33,62,0.92); border: 1px solid rgba(83,168,182,0.3);
+    border-radius: 6px; padding: 10px 14px; z-index: 15;
+    font-size: 11px; min-width: 160px; color: #e0e0e0;
+}
+#measure-info .label { color: #53a8b6; font-weight: 500; }
+
+/* Route panel */
+#route-info {
+    display: none; position: absolute; top: 60px; right: 16px;
+    background: rgba(22,33,62,0.92); border: 1px solid rgba(83,168,182,0.3);
+    border-radius: 6px; padding: 10px 14px; z-index: 15;
+    font-size: 11px; min-width: 180px; color: #e0e0e0;
+}
+#route-info .label { color: #53a8b6; font-weight: 500; }
+
+/* Loading progress */
+#loading-bar {
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    z-index: 100; display: none;
+}
+#loading-bar-inner {
+    height: 100%; background: linear-gradient(90deg, #53a8b6, #00ff88);
+    width: 0%; transition: width 0.2s;
+}
+</style>
+</head>
+<body>
+<div id="loading-bar"><div id="loading-bar-inner"></div></div>
+<header>
+    <h1>⚓ OpenCPN WASM</h1>
+    <input type="file" id="file-input" accept=".000,.kap" style="display:none">
+    <input type="file" id="folder-input" webkitdirectory style="display:none">
+    <button class="btn" id="load-btn" disabled>📂 File</button>
+    <button class="btn" id="load-folder-btn" disabled>📁 Folder</button>
+    <button class="btn btn-sm" id="zoom-in" title="Zoom in (+)">+</button>
+    <button class="btn btn-sm" id="zoom-out" title="Zoom out (-)">−</button>
+    <button class="btn" id="reset-view" title="Reset view (R)">⟲</button>
+    <button class="btn" id="night-mode" title="Color scheme (N)">🌙</button>
+    <button class="btn" id="measure-btn" title="Measure distance (M)">📏</button>
+    <button class="btn" id="route-btn" title="Create route">🧭</button>
+    <button class="btn" id="instruments-btn" title="Instruments panel">📊</button>
+    <button class="btn" id="ais-btn" title="AIS targets">🚢</button>
+    <button class="btn" id="anchor-btn" title="Anchor watch">⚓</button>
+    <button class="btn" id="mob-btn" title="Man Overboard!" style="color:#ff3333">🆘</button>
+    <button class="btn" id="layers-btn" title="Layers">🗂</button>
+    <button class="btn" id="settings-btn" title="Settings">⚙</button>
+    <button class="btn" id="connections-btn" title="Connections">🔌</button>
+    <button class="btn" id="tides-btn" title="Tides">🌊</button>
+    <button class="btn" id="logbook-btn" title="Logbook">📝</button>
+    <button class="btn" id="record-btn" title="Record track">⏺</button>
+    <button class="btn" id="gpx-import-btn" title="Import GPX">📥</button>
+    <button class="btn" id="gpx-export-btn" title="Export GPX">📤</button>
+    <button class="btn" id="print-btn" title="Export PNG">🖨</button>
+    <button class="btn" id="kbd-toggle" title="Show keyboard shortcuts (?)">⌨</button>
+    <input type="file" id="gpx-input" accept=".gpx" style="display:none">
+    <input type="file" id="grib-input" accept=".grb,.grib,.grib2" style="display:none">
+    <input type="file" id="nmea-log-input" accept=".log,.nmea,.txt" style="display:none">
+    <span id="status">Loading…</span>
+</header>
+<div id="canvas-container">
+    <canvas id="chart-canvas"></canvas>
+    <div id="drop-overlay">📂 Drop chart files or folder here</div>
+    <div id="info-panel" style="display:none">
+        <div><span class="label">Charts:</span> <span id="info-charts">—</span></div>
+        <div><span class="label">Zoom:</span> <span id="info-zoom">—</span></div>
+        <div><span class="label">Chart scale:</span> <span id="info-scale">—</span></div>
+        <div><span class="label">Features:</span> <span id="info-features">—</span></div>
+        <div><span class="label">Extent:</span> <span id="info-extent">—</span></div>
+        <div><span class="label">Cursor:</span> <span id="info-cursor">—</span></div>
+    </div>
+    <div id="scale-bar-container">
+        <span id="scale-label">—</span>
+        <div id="scale-bar" style="width:80px; position:relative;"></div>
+    </div>
+    <div id="kbd-hints">
+        <div><kbd>+</kbd> / <kbd>-</kbd> Zoom</div>
+        <div><kbd>↑↓←→</kbd> Pan</div>
+        <div><kbd>R</kbd> Reset view</div>
+        <div><kbd>N</kbd> Night mode</div>
+        <div><kbd>F</kbd> Fullscreen</div>
+        <div><kbd>M</kbd> Measure tool</div>
+        <div><kbd>W</kbd> Drop waypoint</div>
+        <div><kbd>Dbl-click</kbd> Zoom in</div>
+        <div><kbd>Right-click</kbd> Context menu</div>
+        <div><kbd>Scroll</kbd> Zoom to cursor</div>
+    </div>
+    <!-- Context menu -->
+    <div id="context-menu">
+        <div class="ctx-item" data-action="waypoint">📍 Drop Waypoint</div>
+        <div class="ctx-item" data-action="measure-from">📏 Measure from here</div>
+        <div class="ctx-item" data-action="route-from">🧭 Start route here</div>
+        <div class="ctx-sep"></div>
+        <div class="ctx-item" data-action="anchor-here">⚓ Set Anchor Watch</div>
+        <div class="ctx-item" data-action="ebl-here">📐 Bearing Line (EBL)</div>
+        <div class="ctx-item" data-action="feature-query">🔍 What's here?</div>
+        <div class="ctx-sep"></div>
+        <div class="ctx-item" data-action="copy-coords">📋 Copy coordinates</div>
+        <div class="ctx-item" data-action="center-here">🎯 Center here</div>
+        <div class="ctx-item" data-action="chart-info">ℹ️ Chart info</div>
+    </div>
+    <!-- Measure panel -->
+    <div id="measure-info">
+        <div><span class="label">📏 Measure</span></div>
+        <div>Distance: <strong id="measure-dist">—</strong></div>
+        <div>Bearing: <strong id="measure-brg">—</strong></div>
+        <div>Legs: <strong id="measure-legs">0</strong></div>
+        <div style="margin-top:6px;font-size:10px;color:#888;">Click to add points. Right-click to finish.</div>
+    </div>
+    <!-- Route panel -->
+    <div id="route-info">
+        <div><span class="label">🧭 Route</span> <span id="route-name">New Route</span></div>
+        <div>Total: <strong id="route-dist">—</strong></div>
+        <div>Waypoints: <strong id="route-wps">0</strong></div>
+        <div style="margin-top:6px;font-size:10px;color:#888;">Click to add waypoints. Right-click to finish.</div>
+    </div>
+</div>
+<script src="earcut.min.js"></script>
+<script src="app.js"></script>
+<script src="kap-parser.js"></script>
+<script src="opencpn_chart.js"></script>
+<script src="s52-styles.js"></script>
+<script src="text-renderer.js"></script>
+<script src="navigation.js"></script>
+<script src="nmea-parser.js"></script>
+<script src="ais-decoder.js"></script>
+<script src="instruments.js"></script>
+<script src="symbol-renderer.js"></script>
+<script src="ais-display.js"></script>
+<script src="active-nav.js"></script>
+<script src="safety.js"></script>
+<script src="connections.js"></script>
+<script src="settings-ui.js"></script>
+<script src="tides.js"></script>
+<script src="grib.js"></script>
+<script src="feature-info.js"></script>
+<script src="logbook.js"></script>
+<script src="renderer.js"></script>
+</body>
+</html>

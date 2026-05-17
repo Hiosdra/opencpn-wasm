@@ -1,0 +1,25 @@
+# Build artifacts
+wasm-poc/build/
+emsdk/
+node_modules/
+
+# OS files
+.DS_Store
+*.swp
+*.swo
+
+# Test screenshots
+*.png
+
+# Temp files
+*.tmp
+
+# Sample chart files (users load their own)
+wasm-poc/web/*.000
+wasm-poc/web/*.kap
+
+# Playwright test artifacts
+.playwright-mcp/
+
+# OpenCPN source (reference only)
+opencpn-src/
