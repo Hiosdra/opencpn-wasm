@@ -5,7 +5,7 @@
  * Chart files are cached on first load via IndexedDB (handled by app code).
  */
 
-const CACHE_NAME = 'opencpn-wasm-v5';
+const CACHE_NAME = 'opencpn-wasm-v6';
 
 const APP_SHELL = [
     './',
@@ -29,6 +29,7 @@ const APP_SHELL = [
     './grib.js',
     './feature-info.js',
     './logbook.js',
+    './gps.js',
     './earcut.min.js',
     './opencpn_chart.js',
     './opencpn_chart.wasm',

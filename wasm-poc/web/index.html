@@ -281,6 +281,7 @@ canvas { width: 100%; height: 100%; display: block; }
 
     <div class="drawer-section">
         <button class="drawer-item btn" id="kbd-toggle"><span class="di-icon">⌨</span> Keyboard shortcuts</button>
+        <button class="drawer-item btn" id="force-refresh-btn" style="color:#f0a500"><span class="di-icon">🔄</span> Force refresh (clear cache)</button>
     </div>
 </nav>
 
@@ -369,6 +370,22 @@ canvas { width: 100%; height: 100%; display: block; }
     // Close drawer when any action button is clicked
     drawer.querySelectorAll('.drawer-item').forEach(function (btn) {
         btn.addEventListener('click', closeDrawer);
+    });
+
+    // Force refresh: unregister SW, wipe all caches, hard reload
+    document.getElementById('force-refresh-btn').addEventListener('click', async function () {
+        if (!confirm('Wyczyścić cache i przeładować aplikację?')) return;
+        try {
+            if ('serviceWorker' in navigator) {
+                const regs = await navigator.serviceWorker.getRegistrations();
+                await Promise.all(regs.map(function (r) { return r.unregister(); }));
+            }
+            if ('caches' in window) {
+                const keys = await caches.keys();
+                await Promise.all(keys.map(function (k) { return caches.delete(k); }));
+            }
+        } catch (e) { console.warn('Cache clear error:', e); }
+        window.location.reload();
     });
 })();
 </script>
