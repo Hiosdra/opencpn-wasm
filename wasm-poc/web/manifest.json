@@ -2,7 +2,7 @@
   "name": "OpenCPN WASM — Chart Viewer",
   "short_name": "OpenCPN",
   "description": "Nautical chart viewer (S-57 & KAP) running in the browser via WebAssembly",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#1a1a2e",
   "theme_color": "#16213e",
