@@ -21,6 +21,10 @@ header {
     border-bottom: 1px solid #0f3460; z-index: 20; flex-shrink: 0;
 }
 header h1 { font-size: 15px; color: #53a8b6; white-space: nowrap; margin-right: 4px; }
+@media (max-width: 600px) {
+    header { gap: 4px; padding: 6px 8px; }
+    header h1 { display: none; }
+}
 #status {
     font-size: 11px; color: #888; flex: 1;
     text-align: right; min-width: 0;
