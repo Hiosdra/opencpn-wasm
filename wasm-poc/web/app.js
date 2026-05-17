@@ -135,6 +135,7 @@ class VesselState {
         this.satellites = 0;
         this.fixQuality = 0;
         this.utc = '';
+        this.accuracy = 0;  // GPS accuracy radius in meters
         this._history = []; // last N positions for track recording
         this._maxHistory = 10000;
     }

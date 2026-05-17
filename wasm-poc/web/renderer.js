@@ -391,12 +391,25 @@ class ChartRenderer {
         }
     }
 
+    /** Center the map on a geographic position and re-render. */
+    centerOn(lat, lon) {
+        this.cx = lonToX(lon);
+        this.cy = latToY(lat);
+        this._updateScaleBar();
+        this.render();
+    }
+
     setColorScheme(scheme) {
         this.colorScheme = scheme;
         const cs = COLOR_SCHEMES[scheme];
         document.querySelector('header').style.background = cs.headerBg;
         document.querySelectorAll('.btn').forEach(b => { b.style.borderColor = cs.accent; b.style.color = cs.accent; });
+        // Preserve special button colors that should not follow the accent
+        const mobBtn = document.getElementById('mob-btn');
+        if (mobBtn) mobBtn.style.color = '#ff5555';
         document.querySelector('header h1').style.color = cs.accent;
+        const drawer = document.getElementById('drawer');
+        if (drawer) { drawer.style.background = cs.headerBg; drawer.style.borderColor = cs.accent + '44'; }
         const panel = document.getElementById('info-panel');
         if (panel) panel.style.background = cs.uiBg;
         document.getElementById('canvas-container').style.background =
@@ -753,49 +766,49 @@ class ChartRenderer {
         }
 
         // ── Vector layers (S-57) ──
-        if (!this.renderData) return;
+        if (this.renderData) {
+            gl.useProgram(this.program);
+            gl.enableVertexAttribArray(this.aPos);
+            gl.uniformMatrix3fv(this.uMatrix, false, matrix);
 
-        gl.useProgram(this.program);
-        gl.enableVertexAttribArray(this.aPos);
-        gl.uniformMatrix3fv(this.uMatrix, false, matrix);
+            // Draw polygons
+            for (const poly of this.renderData.polygons) {
+                gl.bindBuffer(gl.ARRAY_BUFFER, poly.vbo);
+                gl.vertexAttribPointer(this.aPos, 2, gl.FLOAT, false, 0, 0);
+                // Use S-52 style if available, otherwise fallback
+                const style = typeof getS52Style === 'function' ? getS52Style(poly.code) : null;
+                const color = style && style.fill ? style.fill : poly.color;
+                gl.uniform4fv(this.uColor, color);
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, poly.ibo);
+                gl.drawElements(gl.TRIANGLES, poly.count, gl.UNSIGNED_SHORT, 0);
+            }
 
-        // Draw polygons
-        for (const poly of this.renderData.polygons) {
-            gl.bindBuffer(gl.ARRAY_BUFFER, poly.vbo);
-            gl.vertexAttribPointer(this.aPos, 2, gl.FLOAT, false, 0, 0);
-            // Use S-52 style if available, otherwise fallback
-            const style = typeof getS52Style === 'function' ? getS52Style(poly.code) : null;
-            const color = style && style.fill ? style.fill : poly.color;
-            gl.uniform4fv(this.uColor, color);
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, poly.ibo);
-            gl.drawElements(gl.TRIANGLES, poly.count, gl.UNSIGNED_SHORT, 0);
+            // Draw lines
+            for (const line of this.renderData.lines) {
+                gl.bindBuffer(gl.ARRAY_BUFFER, line.vbo);
+                gl.vertexAttribPointer(this.aPos, 2, gl.FLOAT, false, 0, 0);
+                const style = typeof getS52Style === 'function' ? getS52Style(line.code) : null;
+                const color = style && style.color ? style.color : line.color;
+                gl.uniform4fv(this.uColor, color);
+                const lw = style && style.lineWidth ? style.lineWidth : 1;
+                gl.lineWidth(lw);
+                gl.drawArrays(gl.LINE_STRIP, 0, line.count);
+            }
+            gl.lineWidth(1);
+
+            // Draw points (per-group with S-52 colors)
+            for (const ptGroup of this.renderData.points) {
+                gl.bindBuffer(gl.ARRAY_BUFFER, ptGroup.vbo);
+                gl.vertexAttribPointer(this.aPos, 2, gl.FLOAT, false, 0, 0);
+                const style = typeof getS52Style === 'function' ? getS52Style(ptGroup.code) : null;
+                const color = style && style.color ? style.color : (ptGroup.color || DEFAULT_POINT_COLOR);
+                const ps = style && style.pointSize ? style.pointSize : 4;
+                gl.uniform4fv(this.uColor, color);
+                gl.drawArrays(gl.POINTS, 0, ptGroup.total);
+            }
+
+            gl.disableVertexAttribArray(this.aPos);
         }
-
-        // Draw lines
-        for (const line of this.renderData.lines) {
-            gl.bindBuffer(gl.ARRAY_BUFFER, line.vbo);
-            gl.vertexAttribPointer(this.aPos, 2, gl.FLOAT, false, 0, 0);
-            const style = typeof getS52Style === 'function' ? getS52Style(line.code) : null;
-            const color = style && style.color ? style.color : line.color;
-            gl.uniform4fv(this.uColor, color);
-            const lw = style && style.lineWidth ? style.lineWidth : 1;
-            gl.lineWidth(lw);
-            gl.drawArrays(gl.LINE_STRIP, 0, line.count);
-        }
-        gl.lineWidth(1);
-
-        // Draw points (per-group with S-52 colors)
-        for (const ptGroup of this.renderData.points) {
-            gl.bindBuffer(gl.ARRAY_BUFFER, ptGroup.vbo);
-            gl.vertexAttribPointer(this.aPos, 2, gl.FLOAT, false, 0, 0);
-            const style = typeof getS52Style === 'function' ? getS52Style(ptGroup.code) : null;
-            const color = style && style.color ? style.color : (ptGroup.color || DEFAULT_POINT_COLOR);
-            const ps = style && style.pointSize ? style.pointSize : 4;
-            gl.uniform4fv(this.uColor, color);
-            gl.drawArrays(gl.POINTS, 0, ptGroup.total);
-        }
-
-        gl.disableVertexAttribArray(this.aPos);
 
         // ── Text overlay (soundings, labels, light characteristics) ──
         if (this.textRenderer) {
@@ -886,6 +899,7 @@ class ChartRenderer {
     }
 
     const renderer = new ChartRenderer(canvas);
+    window.renderer = renderer;  // expose for GPS and other modules
     let chartCount = 0;
 
     // Load WASM module (for S-57 support)

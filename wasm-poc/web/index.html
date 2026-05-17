@@ -16,25 +16,96 @@ body {
     overflow: hidden;
 }
 header {
-    background: #16213e; padding: 8px 16px;
-    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-    border-bottom: 1px solid #0f3460; z-index: 20;
+    background: #16213e; padding: 6px 12px;
+    display: flex; align-items: center; gap: 6px;
+    border-bottom: 1px solid #0f3460; z-index: 20; flex-shrink: 0;
 }
-header h1 { font-size: 16px; color: #53a8b6; white-space: nowrap; }
-#status { font-size: 12px; color: #888; flex: 1; text-align: right; min-width: 100px; }
+header h1 { font-size: 15px; color: #53a8b6; white-space: nowrap; margin-right: 4px; }
+#status {
+    font-size: 11px; color: #888; flex: 1;
+    text-align: right; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .btn {
     background: #0f3460; color: #53a8b6; border: 1px solid #53a8b6;
-    padding: 5px 12px; border-radius: 4px; cursor: pointer;
-    font-size: 12px; transition: all 0.15s; white-space: nowrap;
+    padding: 5px 10px; border-radius: 4px; cursor: pointer;
+    font-size: 13px; transition: all 0.15s; white-space: nowrap;
+    flex-shrink: 0;
 }
 .btn:hover { background: #53a8b6; color: #1a1a2e; }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.btn-sm { padding: 5px 8px; font-size: 14px; min-width: 30px; }
+.btn-sm { padding: 5px 8px; font-size: 14px; min-width: 32px; text-align: center; }
 #canvas-container {
     flex: 1; position: relative; overflow: hidden;
     background: rgb(209,227,242);
 }
 canvas { width: 100%; height: 100%; display: block; }
+
+/* GPS button states */
+#gps-btn { font-size: 16px; }
+#gps-btn.gps-active {
+    background: #1a6e3a; border-color: #00cc66; color: #00cc66;
+    box-shadow: 0 0 8px rgba(0,204,102,0.4);
+}
+#gps-btn.gps-acquiring {
+    border-color: #f0a500; color: #f0a500;
+    animation: gps-pulse 1.2s ease-in-out infinite;
+}
+#gps-btn.gps-error { border-color: #cc3333; color: #cc3333; }
+@keyframes gps-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+/* Hamburger button */
+#hamburger-btn { font-size: 18px; letter-spacing: -1px; }
+
+/* Drawer backdrop */
+#drawer-backdrop {
+    display: none; position: fixed; inset: 0; z-index: 29;
+    background: rgba(0,0,0,0.45);
+}
+#drawer-backdrop.open { display: block; }
+
+/* Side drawer */
+#drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 30;
+    width: 280px; background: #16213e;
+    border-left: 1px solid #0f3460;
+    display: flex; flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+    overflow-y: auto;
+}
+#drawer.open { transform: translateX(0); }
+
+.drawer-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid #0f3460;
+    background: #0f1e3a; flex-shrink: 0;
+}
+.drawer-header h2 { font-size: 14px; color: #53a8b6; }
+#drawer-close { font-size: 18px; }
+
+.drawer-section { padding: 8px 0; border-bottom: 1px solid rgba(83,168,182,0.12); }
+.drawer-section:last-child { border-bottom: none; }
+.drawer-section-title {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+    color: #53a8b6; text-transform: uppercase;
+    padding: 4px 16px 6px; opacity: 0.7;
+}
+.drawer-item {
+    display: flex; align-items: center; gap: 12px;
+    width: 100%; padding: 10px 16px;
+    background: transparent; border: none; cursor: pointer;
+    font-size: 13px; color: #e0e0e0;
+    text-align: left; transition: background 0.1s;
+}
+.drawer-item:hover { background: rgba(83,168,182,0.12); color: #e0e0e0; }
+.drawer-item .di-icon { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+.drawer-item.active { color: #53a8b6; }
+#drawer-mob-btn { color: #ff5555; }
+#drawer-mob-btn:hover { background: rgba(255,50,50,0.1); }
 
 /* Info panel */
 #info-panel {
@@ -85,7 +156,7 @@ canvas { width: 100%; height: 100%; display: block; }
 
 /* Keyboard hints tooltip */
 #kbd-hints {
-    position: absolute; top: 60px; right: 16px;
+    position: absolute; top: 52px; right: 16px;
     background: rgba(22,33,62,0.92); padding: 10px 14px;
     border-radius: 6px; font-size: 10px; line-height: 1.8;
     border: 1px solid rgba(83,168,182,0.3); z-index: 15;
@@ -113,7 +184,7 @@ canvas { width: 100%; height: 100%; display: block; }
 
 /* Measure overlay */
 #measure-info {
-    display: none; position: absolute; top: 60px; right: 16px;
+    display: none; position: absolute; top: 52px; right: 16px;
     background: rgba(22,33,62,0.92); border: 1px solid rgba(83,168,182,0.3);
     border-radius: 6px; padding: 10px 14px; z-index: 15;
     font-size: 11px; min-width: 160px; color: #e0e0e0;
@@ -122,7 +193,7 @@ canvas { width: 100%; height: 100%; display: block; }
 
 /* Route panel */
 #route-info {
-    display: none; position: absolute; top: 60px; right: 16px;
+    display: none; position: absolute; top: 52px; right: 16px;
     background: rgba(22,33,62,0.92); border: 1px solid rgba(83,168,182,0.3);
     border-radius: 6px; padding: 10px 14px; z-index: 15;
     font-size: 11px; min-width: 180px; color: #e0e0e0;
@@ -142,37 +213,78 @@ canvas { width: 100%; height: 100%; display: block; }
 </head>
 <body>
 <div id="loading-bar"><div id="loading-bar-inner"></div></div>
+
+<!-- ── Compact header ── -->
 <header>
     <h1>⚓ OpenCPN WASM</h1>
     <input type="file" id="file-input" accept=".000,.kap" style="display:none">
     <input type="file" id="folder-input" webkitdirectory style="display:none">
-    <button class="btn" id="load-btn" disabled>📂 File</button>
-    <button class="btn" id="load-folder-btn" disabled>📁 Folder</button>
+    <button class="btn" id="load-btn" disabled title="Load chart file">📂</button>
+    <button class="btn" id="load-folder-btn" disabled title="Load chart folder">📁</button>
     <button class="btn btn-sm" id="zoom-in" title="Zoom in (+)">+</button>
     <button class="btn btn-sm" id="zoom-out" title="Zoom out (-)">−</button>
-    <button class="btn" id="reset-view" title="Reset view (R)">⟲</button>
-    <button class="btn" id="night-mode" title="Color scheme (N)">🌙</button>
-    <button class="btn" id="measure-btn" title="Measure distance (M)">📏</button>
-    <button class="btn" id="route-btn" title="Create route">🧭</button>
-    <button class="btn" id="instruments-btn" title="Instruments panel">📊</button>
-    <button class="btn" id="ais-btn" title="AIS targets">🚢</button>
-    <button class="btn" id="anchor-btn" title="Anchor watch">⚓</button>
-    <button class="btn" id="mob-btn" title="Man Overboard!" style="color:#ff3333">🆘</button>
-    <button class="btn" id="layers-btn" title="Layers">🗂</button>
-    <button class="btn" id="settings-btn" title="Settings">⚙</button>
-    <button class="btn" id="connections-btn" title="Connections">🔌</button>
-    <button class="btn" id="tides-btn" title="Tides">🌊</button>
-    <button class="btn" id="logbook-btn" title="Logbook">📝</button>
-    <button class="btn" id="record-btn" title="Record track">⏺</button>
-    <button class="btn" id="gpx-import-btn" title="Import GPX">📥</button>
-    <button class="btn" id="gpx-export-btn" title="Export GPX">📤</button>
-    <button class="btn" id="print-btn" title="Export PNG">🖨</button>
-    <button class="btn" id="kbd-toggle" title="Show keyboard shortcuts (?)">⌨</button>
-    <input type="file" id="gpx-input" accept=".gpx" style="display:none">
-    <input type="file" id="grib-input" accept=".grb,.grib,.grib2" style="display:none">
-    <input type="file" id="nmea-log-input" accept=".log,.nmea,.txt" style="display:none">
+    <button class="btn btn-sm" id="reset-view" title="Reset view (R)">⟲</button>
+    <button class="btn btn-sm" id="gps-btn" title="Enable GPS tracking">📍</button>
+    <button class="btn btn-sm" id="night-mode" title="Color scheme (N)">🌙</button>
     <span id="status">Loading…</span>
+    <button class="btn btn-sm" id="hamburger-btn" title="Menu">☰</button>
 </header>
+
+<!-- ── Hamburger drawer backdrop ── -->
+<div id="drawer-backdrop"></div>
+
+<!-- ── Side drawer ── -->
+<nav id="drawer">
+    <div class="drawer-header">
+        <h2>OpenCPN WASM</h2>
+        <button class="btn btn-sm" id="drawer-close" title="Close menu">✕</button>
+    </div>
+
+    <div class="drawer-section">
+        <div class="drawer-section-title">Navigation</div>
+        <button class="drawer-item btn" id="measure-btn"><span class="di-icon">📏</span> Measure distance</button>
+        <button class="drawer-item btn" id="route-btn"><span class="di-icon">🧭</span> Create route</button>
+    </div>
+
+    <div class="drawer-section">
+        <div class="drawer-section-title">Instruments &amp; Data</div>
+        <button class="drawer-item btn" id="instruments-btn"><span class="di-icon">📊</span> Instruments</button>
+        <button class="drawer-item btn" id="ais-btn"><span class="di-icon">🚢</span> AIS targets</button>
+        <button class="drawer-item btn" id="tides-btn"><span class="di-icon">🌊</span> Tides</button>
+        <button class="drawer-item btn" id="logbook-btn"><span class="di-icon">📝</span> Logbook</button>
+        <button class="drawer-item btn" id="record-btn"><span class="di-icon">⏺</span> Record track</button>
+    </div>
+
+    <div class="drawer-section">
+        <div class="drawer-section-title">Safety</div>
+        <button class="drawer-item btn" id="anchor-btn"><span class="di-icon">⚓</span> Anchor watch</button>
+        <button class="drawer-item btn" id="mob-btn" style="color:#ff5555"><span class="di-icon">🆘</span> Man Overboard</button>
+    </div>
+
+    <div class="drawer-section">
+        <div class="drawer-section-title">Layers &amp; Settings</div>
+        <button class="drawer-item btn" id="layers-btn"><span class="di-icon">🗂</span> Layers</button>
+        <button class="drawer-item btn" id="settings-btn"><span class="di-icon">⚙</span> Settings</button>
+        <button class="drawer-item btn" id="connections-btn"><span class="di-icon">🔌</span> Connections</button>
+    </div>
+
+    <div class="drawer-section">
+        <div class="drawer-section-title">Import / Export</div>
+        <button class="drawer-item btn" id="gpx-import-btn"><span class="di-icon">📥</span> Import GPX</button>
+        <button class="drawer-item btn" id="gpx-export-btn"><span class="di-icon">📤</span> Export GPX</button>
+        <button class="drawer-item btn" id="print-btn"><span class="di-icon">🖨</span> Export PNG</button>
+    </div>
+
+    <div class="drawer-section">
+        <button class="drawer-item btn" id="kbd-toggle"><span class="di-icon">⌨</span> Keyboard shortcuts</button>
+    </div>
+</nav>
+
+<!-- Hidden file inputs used by drawer actions -->
+<input type="file" id="gpx-input" accept=".gpx" style="display:none">
+<input type="file" id="grib-input" accept=".grb,.grib,.grib2" style="display:none">
+<input type="file" id="nmea-log-input" accept=".log,.nmea,.txt" style="display:none">
+
 <div id="canvas-container">
     <canvas id="chart-canvas"></canvas>
     <div id="drop-overlay">📂 Drop chart files or folder here</div>
@@ -230,6 +342,33 @@ canvas { width: 100%; height: 100%; display: block; }
         <div style="margin-top:6px;font-size:10px;color:#888;">Click to add waypoints. Right-click to finish.</div>
     </div>
 </div>
+
+<script>
+// ── Hamburger drawer toggle ──
+(function () {
+    var backdrop = document.getElementById('drawer-backdrop');
+    var drawer = document.getElementById('drawer');
+
+    function openDrawer() {
+        drawer.classList.add('open');
+        backdrop.classList.add('open');
+    }
+    function closeDrawer() {
+        drawer.classList.remove('open');
+        backdrop.classList.remove('open');
+    }
+
+    document.getElementById('hamburger-btn').addEventListener('click', openDrawer);
+    document.getElementById('drawer-close').addEventListener('click', closeDrawer);
+    backdrop.addEventListener('click', closeDrawer);
+
+    // Close drawer when any action button is clicked
+    drawer.querySelectorAll('.drawer-item').forEach(function (btn) {
+        btn.addEventListener('click', closeDrawer);
+    });
+})();
+</script>
+
 <script src="earcut.min.js"></script>
 <script src="app.js"></script>
 <script src="kap-parser.js"></script>
@@ -251,5 +390,6 @@ canvas { width: 100%; height: 100%; display: block; }
 <script src="feature-info.js"></script>
 <script src="logbook.js"></script>
 <script src="renderer.js"></script>
+<script src="gps.js"></script>
 </body>
 </html>

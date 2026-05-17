@@ -414,6 +414,28 @@
     var size = 24;
     var hdg = !isNaN(vessel.hdg) ? vessel.hdg : vessel.cog;
 
+    // GPS accuracy circle (drawn beneath the vessel icon)
+    if (vessel.accuracy > 0) {
+      var accuracyLatDeg = vessel.accuracy / 111320;
+      var sp2 = toScreen(vessel.lat + accuracyLatDeg, vessel.lon);
+      if (sp2) {
+        var r = Math.abs(sp.y - sp2.y);
+        if (r > 4) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(sp.x, sp.y, r, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(83,168,182,0.10)';
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(83,168,182,0.45)';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 4]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.restore();
+        }
+      }
+    }
+
     // Draw boat icon (filled triangle)
     ctx.save();
     var angle = (hdg || 0) * DEG - Math.PI / 2;
