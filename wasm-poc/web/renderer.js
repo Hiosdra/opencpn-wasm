@@ -907,9 +907,9 @@ class ChartRenderer {
         loadFolderBtn.disabled = false;
     }
 
-    // Register Service Worker
+    // Register Service Worker (scope relative to page for subdirectory hosting)
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js')
+        navigator.serviceWorker.register('./sw.js', { scope: './' })
             .then(reg => console.log('[SW] Registered:', reg.scope))
             .catch(err => console.warn('[SW] Registration failed:', err));
     }
