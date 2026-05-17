@@ -914,6 +914,132 @@ class ChartRenderer {
             .catch(err => console.warn('[SW] Registration failed:', err));
     }
 
+    // ── PWA Install Prompt ──
+    let deferredInstallPrompt = null;
+    const installBanner = document.createElement('div');
+    installBanner.id = 'pwa-install-banner';
+    installBanner.innerHTML = `
+        <span>📲 Zainstaluj OpenCPN WASM jako aplikację offline</span>
+        <button id="pwa-install-btn" class="btn" style="margin-left:12px;">Zainstaluj</button>
+        <button id="pwa-dismiss-btn" style="background:none;border:none;color:#888;cursor:pointer;font-size:16px;margin-left:8px;" title="Zamknij">✕</button>
+    `;
+    installBanner.style.cssText = `
+        display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+        background:rgba(22,33,62,0.96); border:1px solid #53a8b6; border-radius:8px;
+        padding:12px 20px; z-index:200; align-items:center; gap:8px;
+        box-shadow:0 4px 20px rgba(0,0,0,0.5); font-size:13px; color:#e0e0e0;
+    `;
+    document.body.appendChild(installBanner);
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredInstallPrompt = e;
+        if (!localStorage.getItem('pwa-install-dismissed')) {
+            installBanner.style.display = 'flex';
+        }
+    });
+
+    document.getElementById('pwa-install-btn').addEventListener('click', async () => {
+        if (!deferredInstallPrompt) return;
+        installBanner.style.display = 'none';
+        deferredInstallPrompt.prompt();
+        const { outcome } = await deferredInstallPrompt.userChoice;
+        console.log('[PWA] Install:', outcome);
+        deferredInstallPrompt = null;
+    });
+
+    document.getElementById('pwa-dismiss-btn').addEventListener('click', () => {
+        installBanner.style.display = 'none';
+        localStorage.setItem('pwa-install-dismissed', '1');
+    });
+
+    window.addEventListener('appinstalled', () => {
+        installBanner.style.display = 'none';
+        deferredInstallPrompt = null;
+        console.log('[PWA] Installed successfully');
+    });
+
+    // ── Chart Persistence (IndexedDB) ──
+    async function saveChartToIDB(name, rawData, type) {
+        if (typeof App === 'undefined' || !App.storage) return;
+        try {
+            // Clone the buffer to avoid issues with transferred/detached ArrayBuffers
+            const copy = rawData instanceof ArrayBuffer ? rawData.slice(0) : new Uint8Array(rawData).buffer;
+            await App.storage.put('charts', {
+                id: name,
+                type: type,
+                data: copy,
+                savedAt: Date.now(),
+            });
+            console.log(`[IDB] Saved chart: ${name} (${(copy.byteLength / 1024).toFixed(0)} KB)`);
+        } catch (err) {
+            console.warn('[IDB] Failed to save chart:', name, err);
+        }
+    }
+
+    async function loadSavedCharts() {
+        if (typeof App === 'undefined' || !App.storage) return;
+        try {
+            const saved = await App.storage.getAll('charts');
+            if (!saved || saved.length === 0) return;
+
+            status.textContent = `Restoring ${saved.length} saved chart(s)…`;
+            showProgress(10);
+            let loaded = 0;
+
+            for (const entry of saved) {
+                try {
+                    const raw = new Uint8Array(entry.data);
+                    if (entry.type === 'kap') {
+                        const kap = parseKAP(raw);
+                        renderer.loadKAPChart(kap);
+                    } else {
+                        if (!Module) continue;
+                        const filePath = '/' + entry.id;
+                        Module.FS.writeFile(filePath, raw);
+                        for (const csvName of ['s57objectclasses.csv', 's57attributes.csv', 's57expectedinput.csv']) {
+                            try { Module.FS.stat('/' + csvName); } catch {
+                                try {
+                                    const resp = await fetch(csvName);
+                                    if (resp.ok) Module.FS.writeFile('/' + csvName, new Uint8Array(await resp.arrayBuffer()));
+                                } catch {}
+                            }
+                        }
+                        const chartData = Module.parseChart(filePath, '/');
+                        if (chartData && chartData.extent) renderer.loadChart(chartData);
+                    }
+                    loaded++;
+                    chartCount++;
+                    showProgress(10 + 90 * (loaded / saved.length));
+                } catch (err) {
+                    console.warn(`[IDB] Failed to restore ${entry.id}:`, err);
+                }
+            }
+
+            updateChartCount();
+            hideProgress();
+            if (loaded > 0) {
+                status.textContent = `Restored ${loaded} chart(s) from cache`;
+                renderer.render();
+            }
+        } catch (err) {
+            console.warn('[IDB] Failed to load saved charts:', err);
+            hideProgress();
+        }
+    }
+
+    // Auto-restore charts on startup
+    await loadSavedCharts();
+
+    // Expose chart cache management globally
+    window.clearSavedCharts = async () => {
+        if (typeof App !== 'undefined' && App.storage) {
+            await App.storage.clear('charts');
+            status.textContent = 'Chart cache cleared — reload to start fresh';
+            console.log('[IDB] All saved charts cleared');
+        }
+    };
+
     loadBtn.addEventListener('click', () => fileInput.click());
     loadFolderBtn.addEventListener('click', () => folderInput.click());
 
@@ -1052,6 +1178,7 @@ class ChartRenderer {
         chartCount++;
         renderer.loadKAPChart(kap);
         updateChartCount();
+        saveChartToIDB(file.name, data.buffer, 'kap');
     }
 
     async function loadS57File(file, batch) {
@@ -1094,6 +1221,7 @@ class ChartRenderer {
         chartCount++;
         renderer.loadChart(chartData);
         updateChartCount();
+        saveChartToIDB(file.name, data.buffer, 's57');
     }
 
     function updateChartCount() {
